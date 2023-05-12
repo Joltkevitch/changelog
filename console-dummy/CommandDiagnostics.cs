@@ -4,7 +4,7 @@ namespace console_dummy
 {
     public static class CommandDiagnostics
     {
-        public static string OutputCommnad(string commandBase, string commandStrategy)
+        public static string OutputCommand(string commandBase, string commandStrategy)
         {
             ProcessStartInfo startInfo = new ProcessStartInfo
             {

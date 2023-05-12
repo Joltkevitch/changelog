@@ -6,8 +6,8 @@ namespace console_dummy
 
         public CommitBody(string? description)
         {
-            Description = description?.Trim();
+            Description = string.Join(" ", description?.Split(new[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
         }
-        
+
     }
 }

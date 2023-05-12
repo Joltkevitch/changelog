@@ -20,8 +20,8 @@ namespace console_dummy
         {
             // return $"- {Author.Capitalize()} \r\n" +
             return $"### {Header?.ParseHeader()} \r\n  \r\n" +
-                   $"{string.Join("\r", Body?.Description?.Trim().Capitalize())} \r\n \r\n" +
-                   $"{Footer?.Footer.Capitalize()} \r\n \r\n";
+                   $"{string.Join("\r", Body?.Description?.Trim().Capitalize())} \r\n" +
+                   $"{Footer?.Footer.Capitalize()} \r\n";
         }
 
     }
