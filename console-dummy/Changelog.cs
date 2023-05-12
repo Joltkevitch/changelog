@@ -16,6 +16,7 @@ namespace console_dummy
         public string SearchRegexPattern { get; private set; } = @"commit\s+(?<hash>[\da-f]{40})(?:\s+\(.*\))?\nAuthor:\s+(?<author>[^\n]+?)(?:\s+<=>)?\nDate:\s+(?<date>[^\n]+)(?:\n){2}\s+(?<type>[a-z]+)\((?<scope>[^)]+)\):\s+(?<title>[^\n]+)(?<body>[\s\S]*?)(?:(?:\n{2})(?<footer>BREAKING CHANGE!.*?))?(?:\n{2}commit|$)";
         private Regex searchRegex { get; set; }
         private string unsolvedCommits { get; set; } = "";
+        private string parsedHistory { get; set; }
         private static readonly Dictionary<CommitType, string> StaticTypeTitles = new Dictionary<CommitType, string>
         {
             {CommitType.feat, "## Features"},
@@ -61,7 +62,7 @@ namespace console_dummy
             {
                 using (StreamWriter writer = new StreamWriter(fileStream))
                 {
-                    writer.Write(ParseCommitForChangeLog() + Environment.NewLine);
+                    writer.Write(parsedHistory + Environment.NewLine);
                     writer.Write(existingContent);
                 }
             }
@@ -94,8 +95,7 @@ namespace console_dummy
                     CommitStory.AddRange(commitMatches.Select(match =>
                             {
 
-                                DateTime validDate = DateTime.ParseExact(match.Groups["date"].Value, "ddd MMM dd HH:mm:ss yyyy zzz", CultureInfo.InvariantCulture);
-                                return new Commit(match.Groups["author"].Value, validDate, match.Groups["hash"].Value)
+                                return new Commit(match.Groups["author"].Value, match.Groups["date"].Value.ToDateFromString(), match.Groups["hash"].Value)
                                 {
                                     Header = new CommitHeader(match.Groups["title"].Value, match.Groups["scope"].Value, match.Groups["type"].Value),
                                     Body = new CommitBody(match.Groups["body"].Value),
@@ -111,23 +111,39 @@ namespace console_dummy
             }
         }
 
-        public string ParseCommitForChangeLog()
+        public void ParseCommitForChangeLog()
         {
             IEnumerable<IGrouping<(CommitType? Type, DateTime Date), Commit>> groupCommits = CommitStory.GroupBy(commit => (commit!.Header?.Type, commit!.Date));
-            return $"# {CurrentVersion.ToString()} \r\n \r\n" + string.Join("", StaticTypeTitles.Where(title => groupCommits.Select(groups => groups.Key.Type).ToList().Contains(title.Key)).Select(typeTitles =>
-            {
-                var commitsByType = groupCommits.Where(grouping => grouping.Key.Type == typeTitles.Key).ToList();
-                return typeTitles.Value + ": \r\n \r\n" + string.Join("", commitsByType.SelectMany(grouping =>
-                {
-                    return "### " + grouping.Key.Date.ToLongDateString() + " \r\n" + string.Join("", grouping.Where(group => group.Date.ToShortDateString() == grouping.Key.Date.ToShortDateString()).Select(commit => commit.ParseCommitForChangelog()));
-                })) + " \r\n \r\n";
-            })).Trim();
+            parsedHistory = $"\r\n# {CurrentVersion.ToString()} \r\n \r\n" +
+            string.Join("", StaticTypeTitles
+                            .Where(title => groupCommits
+                                            .Select(groups => groups.Key.Type)
+                                            .ToList()
+                                            .Contains(title.Key))
+                            .Select(typeTitles =>
+                            {
+                                var commitsByType = groupCommits
+                                                    .Where(grouping => grouping.Key.Type == typeTitles.Key)
+                                                    .ToList();
+                                DateTime firstDate = commitsByType.FirstOrDefault()!.Key.Date;
+                                return typeTitles.Value + ": \r\n" +
+                                        string.Join("", commitsByType
+                                                        .SelectMany((grouping, index) =>
+                                                        {
+                                                            bool isSameDateAndNotFirstElement = grouping.Key.Date.ToLongDateString() == firstDate.ToLongDateString()
+                                                                                                                                     && index != 0;
+                                                            string dateString = isSameDateAndNotFirstElement ? "" : $"## {grouping.Key.Date.ToLongDateString()}";
+                                                            return dateString + " \r\n \r\n" + string.Join("", grouping
+                                                                            .Where(group => group.Date.ToShortDateString() == grouping.Key.Date.ToShortDateString())
+                                                                            .Select(commit => commit.ParseCommitForChangelog()));
+                                                        })) + "\r\n";
+                            })).Trim();
         }
 
 
         public override string ToString()
         {
-            return @$"{CurrentVersion} {CommitStory.ToString()}";
+            return @$"\r\n{CurrentVersion} {CommitStory.ToString()}";
         }
     }
 }
