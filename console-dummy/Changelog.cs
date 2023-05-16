@@ -91,10 +91,8 @@ namespace console_dummy
                         unsolvedCommits += commitBlock;
                         continue;
                     }
-
                     CommitStory.AddRange(commitMatches.Select(match =>
                             {
-
                                 return new Commit(match.Groups["author"].Value, match.Groups["date"].Value.ToDateFromString(), match.Groups["hash"].Value)
                                 {
                                     Header = new CommitHeader(match.Groups["title"].Value, match.Groups["scope"].Value, match.Groups["type"].Value),
@@ -107,6 +105,7 @@ namespace console_dummy
             }
             catch (Exception error)
             {
+                Console.WriteLine($"Commits unsolved: {unsolvedCommits}");
                 throw error;
             }
         }
